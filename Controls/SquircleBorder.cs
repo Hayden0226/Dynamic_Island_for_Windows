@@ -6,6 +6,10 @@ namespace DynamicIsland.Controls;
 
 public sealed class SquircleBorder : Decorator
 {
+    private const double CapsuleSpanFactor = 1.12;
+    private const double CapsuleExponent = 2.4;
+    private const int CapsuleSegments = 24;
+
     public static readonly DependencyProperty FillProperty = DependencyProperty.Register(
         nameof(Fill),
         typeof(Brush),
@@ -35,6 +39,12 @@ public sealed class SquircleBorder : Decorator
         typeof(double),
         typeof(SquircleBorder),
         new FrameworkPropertyMetadata(0.6, FrameworkPropertyMetadataOptions.AffectsRender, OnShapePropertyChanged));
+
+    public static readonly DependencyProperty ContinuousCapsuleProperty = DependencyProperty.Register(
+        nameof(ContinuousCapsule),
+        typeof(bool),
+        typeof(SquircleBorder),
+        new FrameworkPropertyMetadata(false, FrameworkPropertyMetadataOptions.AffectsRender, OnShapePropertyChanged));
 
     public static readonly DependencyProperty PaddingProperty = DependencyProperty.Register(
         nameof(Padding),
@@ -67,6 +77,7 @@ public sealed class SquircleBorder : Decorator
     private double _cachedSurfaceOffsetX;
     private double _cachedCornerRadius;
     private double _cachedCornerSmoothing;
+    private bool _cachedContinuousCapsule;
     private Pen? _cachedPen;
     private Brush? _cachedPenBrush;
     private double _cachedPenThickness;
@@ -99,6 +110,12 @@ public sealed class SquircleBorder : Decorator
     {
         get => (double)GetValue(CornerSmoothingProperty);
         set => SetValue(CornerSmoothingProperty, value);
+    }
+
+    public bool ContinuousCapsule
+    {
+        get => (bool)GetValue(ContinuousCapsuleProperty);
+        set => SetValue(ContinuousCapsuleProperty, value);
     }
 
     public Thickness Padding
@@ -136,22 +153,25 @@ public sealed class SquircleBorder : Decorator
 
         var radius = CornerRadius;
         var smoothing = CornerSmoothing;
+        var continuousCapsule = ContinuousCapsule;
         var offsetX = Math.Max(0, (ActualWidth - width) / 2);
         var size = new Size(width, height);
         if (_cachedGeometry is not null &&
             _cachedSize == size &&
             Math.Abs(_cachedSurfaceOffsetX - offsetX) < 0.001 &&
             Math.Abs(_cachedCornerRadius - radius) < 0.001 &&
-            Math.Abs(_cachedCornerSmoothing - smoothing) < 0.001)
+            Math.Abs(_cachedCornerSmoothing - smoothing) < 0.001 &&
+            _cachedContinuousCapsule == continuousCapsule)
         {
             return _cachedGeometry;
         }
 
-        _cachedGeometry = CreateSquircleGeometry(width, height, radius, smoothing, offsetX);
+        _cachedGeometry = CreateSquircleGeometry(width, height, radius, smoothing, offsetX, continuousCapsule);
         _cachedSize = size;
         _cachedSurfaceOffsetX = offsetX;
         _cachedCornerRadius = radius;
         _cachedCornerSmoothing = smoothing;
+        _cachedContinuousCapsule = continuousCapsule;
         return _cachedGeometry;
     }
 
@@ -253,7 +273,8 @@ public sealed class SquircleBorder : Decorator
         double height,
         double cornerRadius,
         double cornerSmoothing,
-        double offsetX = 0)
+        double offsetX = 0,
+        bool continuousCapsule = false)
     {
         if (width <= 0 || height <= 0)
         {
@@ -267,6 +288,13 @@ public sealed class SquircleBorder : Decorator
             var rectangle = new RectangleGeometry(new Rect(offsetX, 0, width, height));
             rectangle.Freeze();
             return rectangle;
+        }
+
+        if (continuousCapsule &&
+            radius >= budget - 0.01 &&
+            Math.Abs(width - height) > 0.5)
+        {
+            return CreateContinuousCapsuleGeometry(width, height, radius, offsetX);
         }
 
         var originalSmoothing = Math.Clamp(cornerSmoothing, 0, 1);
@@ -389,6 +417,60 @@ public sealed class SquircleBorder : Decorator
 
         geometry.Freeze();
         return geometry;
+    }
+
+    private static Geometry CreateContinuousCapsuleGeometry(
+        double width,
+        double height,
+        double radius,
+        double offsetX)
+    {
+        var horizontal = width >= height;
+        var power = 2.0 / CapsuleExponent;
+        var endSpan = Math.Min(radius * CapsuleSpanFactor, (horizontal ? width : height) / 2.0);
+        var spanX = horizontal ? endSpan : radius;
+        var spanY = horizontal ? radius : endSpan;
+
+        var geometry = new StreamGeometry { FillRule = FillRule.Nonzero };
+        using (var context = geometry.Open())
+        {
+            context.BeginFigure(new Point(offsetX + spanX, 0), true, true);
+            context.LineTo(new Point(offsetX + width - spanX, 0), true, false);
+            AppendSuperellipseCorner(context, offsetX + width - spanX, spanY, spanX, spanY, power, 1, -1, true);
+            context.LineTo(new Point(offsetX + width, height - spanY), true, false);
+            AppendSuperellipseCorner(context, offsetX + width - spanX, height - spanY, spanX, spanY, power, 1, 1, false);
+            context.LineTo(new Point(offsetX + spanX, height), true, false);
+            AppendSuperellipseCorner(context, offsetX + spanX, height - spanY, spanX, spanY, power, -1, 1, true);
+            context.LineTo(new Point(offsetX, spanY), true, false);
+            AppendSuperellipseCorner(context, offsetX + spanX, spanY, spanX, spanY, power, -1, -1, false);
+        }
+
+        geometry.Freeze();
+        return geometry;
+    }
+
+    private static void AppendSuperellipseCorner(
+        StreamGeometryContext context,
+        double centerX,
+        double centerY,
+        double radiusX,
+        double radiusY,
+        double power,
+        int xSign,
+        int ySign,
+        bool reverse)
+    {
+        var points = new Point[CapsuleSegments];
+        for (var i = 1; i <= CapsuleSegments; i++)
+        {
+            var step = reverse ? 1.0 - (double)i / CapsuleSegments : (double)i / CapsuleSegments;
+            var angle = Math.PI / 2.0 * step;
+            var x = centerX + xSign * radiusX * Math.Pow(Math.Cos(angle), power);
+            var y = centerY + ySign * radiusY * Math.Pow(Math.Sin(angle), power);
+            points[i - 1] = new Point(x, y);
+        }
+
+        context.PolyLineTo(points, true, true);
     }
 
     private static void OnShapePropertyChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs e)
