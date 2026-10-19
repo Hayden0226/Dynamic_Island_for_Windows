@@ -2,11 +2,11 @@
 
 一个面向 Windows 桌面的轻量「灵动岛」。第一阶段聚焦视觉质感、连续动画和低资源占用，采用原生 WPF 实现；第二阶段规划迁移到 Vue 3 + TypeScript + Tauri 2 + Rust，扩展更完整的系统控制能力。
 
-![收起状态](docs/island-collapsed.png)
+<img src="docs/island-collapsed.png" width="440" alt="收起状态">
 
-![展开动画](docs/island-expand.gif)
+<img src="docs/island-expand-620.gif" width="620" alt="展开动画">
 
-![展开状态](docs/island-expanded.png)
+<img src="docs/island-expanded.png" width="620" alt="展开状态">
 
 ## 当前能力
 
