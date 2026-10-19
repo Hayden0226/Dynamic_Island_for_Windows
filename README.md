@@ -4,6 +4,12 @@
 
 ## 当前版本（第二阶段 · Tauri）
 
+<img src="docs/island-collapsed.png" width="440" alt="收起状态">
+
+<img src="docs/island-expand-620.gif" width="620" alt="展开动画">
+
+<img src="docs/island-expanded.png" width="620" alt="展开状态">
+
 ### 能力
 
 - `176 x 48` 胶囊收起态，显示时间与当前媒体封面。
@@ -91,14 +97,7 @@ npm run dev
 
 ## 第一阶段（WPF · 保留在仓库根目录）
 
-第一阶段以原生 WPF 实现三态交互、媒体控制与轻量系统状态，用于验证视觉质感与动画基线。以下为第一阶段效果：
-
-<img src="docs/island-collapsed.png" width="440" alt="收起状态">
-
-<img src="docs/island-expand-620.gif" width="620" alt="展开动画">
-
-<img src="docs/island-expanded.png" width="620" alt="展开状态">
-
+第一阶段以原生 WPF 实现三态交互、媒体控制与轻量系统状态，用于验证视觉质感与动画基线。
 ```powershell
 dotnet build .\DynamicIsland.csproj -c Release
 dotnet run --project .\DynamicIsland.csproj -c Release
