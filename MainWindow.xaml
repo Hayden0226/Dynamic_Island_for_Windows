@@ -1,0 +1,725 @@
+<Window x:Class="DynamicIsland.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:controls="clr-namespace:DynamicIsland.Controls"
+        Title="Dynamic Island"
+        Width="432"
+        Height="272"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        ResizeMode="NoResize"
+        ShowInTaskbar="False"
+        Topmost="True"
+        ShowActivated="False"
+        WindowStartupLocation="Manual"
+        UseLayoutRounding="False"
+        SnapsToDevicePixels="False"
+        FontFamily="{StaticResource UiFont}"
+        TextOptions.TextFormattingMode="Display"
+        TextOptions.TextRenderingMode="Grayscale"
+        SourceInitialized="Window_SourceInitialized"
+        Loaded="Window_Loaded"
+        Closed="Window_Closed">
+    <Window.Resources>
+        <LinearGradientBrush x:Key="ShellGradient" StartPoint="0,0" EndPoint="0.25,1">
+            <GradientStop Color="#F20D0D10" Offset="0" />
+            <GradientStop Color="#F2000000" Offset="1" />
+        </LinearGradientBrush>
+        <LinearGradientBrush x:Key="ArtGradient" StartPoint="0,0" EndPoint="1,1">
+            <GradientStop Color="#FF6F8DFF" Offset="0" />
+            <GradientStop Color="#FFE84C8A" Offset="1" />
+        </LinearGradientBrush>
+
+        <Style x:Key="TrackTitle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="16" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="#FFF5F5F7" />
+            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+        </Style>
+
+        <Style x:Key="TrackArtist" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="11.5" />
+            <Setter Property="Foreground" Value="#FF8E8E93" />
+            <Setter Property="Margin" Value="0,2,0,0" />
+            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+        </Style>
+
+        <Style x:Key="ChipLabel" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="8" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="#70FFFFFF" />
+        </Style>
+
+        <Style x:Key="ChipValue" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="#F2FFFFFF" />
+            <Setter Property="Margin" Value="0,1,0,0" />
+        </Style>
+
+        <Style x:Key="IconButton" TargetType="Button">
+            <Setter Property="Width" Value="30" />
+            <Setter Property="Height" Value="30" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="#B3FFFFFF" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="FontFamily" Value="{StaticResource IconFont}" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Grid>
+                            <controls:SquircleBorder x:Name="Bg"
+                                                     Fill="#FFFFFFFF"
+                                                     Opacity="0"
+                                                     CornerRadius="15"
+                                                     CornerSmoothing="0.6" />
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Trigger.EnterActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="Bg"
+                                                             Storyboard.TargetProperty="Opacity"
+                                                             To="0.12"
+                                                             Duration="0:0:0.08" />
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.EnterActions>
+                                <Trigger.ExitActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="Bg"
+                                                             Storyboard.TargetProperty="Opacity"
+                                                             To="0"
+                                                             Duration="0:0:0.08" />
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.ExitActions>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Bg" Property="Opacity" Value="0.22" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="PlayButton" TargetType="Button">
+            <Setter Property="Width" Value="40" />
+            <Setter Property="Height" Value="40" />
+            <Setter Property="Background" Value="#FFFFFFFF" />
+            <Setter Property="Foreground" Value="#FF000000" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="FontFamily" Value="{StaticResource IconFont}" />
+            <Setter Property="FontSize" Value="15" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Grid>
+                            <controls:SquircleBorder x:Name="Bg"
+                                                     Fill="{TemplateBinding Background}"
+                                                     Opacity="1"
+                                                     CornerRadius="20"
+                                                     CornerSmoothing="0.6" />
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Trigger.EnterActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="Bg"
+                                                             Storyboard.TargetProperty="Opacity"
+                                                             To="0.86"
+                                                             Duration="0:0:0.08" />
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.EnterActions>
+                                <Trigger.ExitActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="Bg"
+                                                             Storyboard.TargetProperty="Opacity"
+                                                             To="1"
+                                                             Duration="0:0:0.08" />
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.ExitActions>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Bg" Property="Opacity" Value="0.72" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="MenuButton" TargetType="Button">
+            <Setter Property="Height" Value="34" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="#F2FFFFFF" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="FontFamily" Value="{StaticResource UiFont}" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Grid>
+                            <controls:SquircleBorder x:Name="Bg"
+                                                     Fill="#FFFFFFFF"
+                                                     Opacity="0"
+                                                     CornerRadius="9"
+                                                     CornerSmoothing="0.6" />
+                            <ContentPresenter Margin="10,0"
+                                              HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                              VerticalAlignment="Center" />
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Trigger.EnterActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="Bg"
+                                                             Storyboard.TargetProperty="Opacity"
+                                                             To="0.1"
+                                                             Duration="0:0:0.08" />
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.EnterActions>
+                                <Trigger.ExitActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="Bg"
+                                                             Storyboard.TargetProperty="Opacity"
+                                                             To="0"
+                                                             Duration="0:0:0.08" />
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.ExitActions>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Bg" Property="Opacity" Value="0.18" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="StatusChip" TargetType="controls:SquircleBorder">
+            <Setter Property="Fill" Value="#14FFFFFF" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="CornerSmoothing" Value="0.6" />
+            <Setter Property="Padding" Value="7,4" />
+            <Setter Property="Margin" Value="0,0,6,0" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+
+        <Style TargetType="ToolTip">
+            <Setter Property="Background" Value="#F22A2A2E" />
+            <Setter Property="Foreground" Value="#F2FFFFFF" />
+            <Setter Property="BorderBrush" Value="#33FFFFFF" />
+            <Setter Property="Padding" Value="8,4" />
+            <Setter Property="FontSize" Value="10" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToolTip">
+                        <controls:SquircleBorder Fill="{TemplateBinding Background}"
+                                                 Stroke="{TemplateBinding BorderBrush}"
+                                                 StrokeThickness="1"
+                                                 CornerRadius="8"
+                                                 CornerSmoothing="0.6"
+                                                 Padding="{TemplateBinding Padding}">
+                            <ContentPresenter />
+                        </controls:SquircleBorder>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Grid x:Name="Root"
+          Background="Transparent"
+          MouseEnter="Root_MouseEnter"
+          MouseLeave="Root_MouseLeave"
+          MouseRightButtonUp="Root_MouseRightButtonUp">
+        <controls:SquircleBorder x:Name="ShadowShell"
+                                 Width="380"
+                                 Height="220"
+                                 SurfaceWidth="240"
+                                 SurfaceHeight="48"
+                                 Margin="0,26,0,0"
+                                 HorizontalAlignment="Center"
+                                 VerticalAlignment="Top"
+                                 Fill="#FF000000"
+                                 CornerRadius="24"
+                                 CornerSmoothing="0.6"
+                                 IsHitTestVisible="False"
+                                 ClipContent="False">
+            <controls:SquircleBorder.Effect>
+                <DropShadowEffect BlurRadius="28"
+                                  ShadowDepth="7"
+                                  Direction="270"
+                                  Opacity="0.22"
+                                  Color="#000000"
+                                  RenderingBias="Quality" />
+            </controls:SquircleBorder.Effect>
+        </controls:SquircleBorder>
+
+        <controls:SquircleBorder x:Name="ShadowRim"
+                                 Width="380"
+                                 Height="220"
+                                 SurfaceWidth="240"
+                                 SurfaceHeight="48"
+                                 Margin="0,26,0,0"
+                                 HorizontalAlignment="Center"
+                                 VerticalAlignment="Top"
+                                 Fill="#FF000000"
+                                 CornerRadius="24"
+                                 CornerSmoothing="0.6"
+                                 IsHitTestVisible="False"
+                                 ClipContent="False">
+            <controls:SquircleBorder.Effect>
+                <DropShadowEffect BlurRadius="3"
+                                  ShadowDepth="1"
+                                  Direction="270"
+                                  Opacity="0.55"
+                                  Color="#000000"
+                                  RenderingBias="Quality" />
+            </controls:SquircleBorder.Effect>
+        </controls:SquircleBorder>
+
+        <controls:SquircleBorder x:Name="Shell"
+                                 Width="380"
+                                 Height="220"
+                                 SurfaceWidth="240"
+                                 SurfaceHeight="48"
+                                 Margin="0,26,0,0"
+                                 HorizontalAlignment="Center"
+                                 VerticalAlignment="Top"
+                                 Fill="{StaticResource ShellGradient}"
+                                 Stroke="#26FFFFFF"
+                                 StrokeThickness="1"
+                                 CornerRadius="24"
+                                 CornerSmoothing="0.6"
+                                 ClipContent="False">
+            <controls:SquircleBorder x:Name="ContentMask"
+                                     Width="380"
+                                     Height="220"
+                                     HorizontalAlignment="Center"
+                                     VerticalAlignment="Top"
+                                     ClipContent="True">
+            <Grid>
+                <Border x:Name="TopHighlight"
+                        Height="1"
+                        VerticalAlignment="Top"
+                        Margin="28,1,28,0"
+                        RenderTransformOrigin="0.5,0"
+                        IsHitTestVisible="False">
+                    <Border.RenderTransform>
+                        <ScaleTransform x:Name="TopHighlightScale" />
+                    </Border.RenderTransform>
+                    <Border.Background>
+                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                            <GradientStop Color="#00FFFFFF" Offset="0" />
+                            <GradientStop Color="#33FFFFFF" Offset="0.5" />
+                            <GradientStop Color="#00FFFFFF" Offset="1" />
+                        </LinearGradientBrush>
+                    </Border.Background>
+                </Border>
+
+                <Grid x:Name="CollapsedView"
+                      Height="48"
+                      VerticalAlignment="Top">
+                    <StackPanel Orientation="Horizontal"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center">
+                        <controls:SquircleBorder x:Name="CollapsedArt"
+                                                 Width="22"
+                                                 Height="22"
+                                                 CornerRadius="11"
+                                                 CornerSmoothing="0.6"
+                                                 ClipContent="False"
+                                                 Margin="0,0,8,0"
+                                                 Fill="{StaticResource ArtGradient}"
+                                                 Visibility="Collapsed">
+                            <TextBlock x:Name="CollapsedArtGlyph"
+                                       Text="&#xE8D6;"
+                                       FontFamily="{StaticResource IconFont}"
+                                       FontSize="10"
+                                       Foreground="#F2FFFFFF"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center" />
+                        </controls:SquircleBorder>
+                        <TextBlock x:Name="CollapsedTime"
+                                   Text="12:34"
+                                   FontSize="15"
+                                   FontWeight="SemiBold"
+                                   Foreground="#FFF5F5F7"
+                                   Typography.NumeralAlignment="Tabular"
+                                   VerticalAlignment="Center" />
+                    </StackPanel>
+                </Grid>
+
+                <Grid x:Name="ExpandedView"
+                      Width="344"
+                      Height="188"
+                      HorizontalAlignment="Center"
+                      VerticalAlignment="Center"
+                      Opacity="0"
+                      Visibility="Visible"
+                      IsHitTestVisible="False">
+                    <Grid.RenderTransform>
+                        <TranslateTransform x:Name="ExpandedTranslate" Y="0" />
+                    </Grid.RenderTransform>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <Grid Grid.Row="0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="56" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="22" />
+                        </Grid.ColumnDefinitions>
+
+                        <Grid Width="56" Height="56" HorizontalAlignment="Left" VerticalAlignment="Top">
+                            <controls:SquircleBorder x:Name="AlbumArtA"
+                                                     CornerRadius="16"
+                                                     CornerSmoothing="0.6"
+                                                     ClipContent="False"
+                                                     Fill="{StaticResource ArtGradient}">
+                                <TextBlock x:Name="AlbumArtGlyphA"
+                                           Text="&#xE8D6;"
+                                           FontFamily="{StaticResource IconFont}"
+                                           FontSize="22"
+                                           Foreground="#F2FFFFFF"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center" />
+                            </controls:SquircleBorder>
+                            <controls:SquircleBorder x:Name="AlbumArtB"
+                                                     CornerRadius="16"
+                                                     CornerSmoothing="0.6"
+                                                     ClipContent="False"
+                                                     Fill="{StaticResource ArtGradient}"
+                                                     Opacity="0"
+                                                     Visibility="Collapsed">
+                                <TextBlock x:Name="AlbumArtGlyphB"
+                                           Text="&#xE8D6;"
+                                           FontFamily="{StaticResource IconFont}"
+                                           FontSize="22"
+                                           Foreground="#F2FFFFFF"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center" />
+                            </controls:SquircleBorder>
+                        </Grid>
+
+                        <Grid Grid.Column="1" Margin="14,1,10,0">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="34" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <Grid Grid.Row="0">
+                                <StackPanel x:Name="TrackTextA">
+                                    <StackPanel.RenderTransform>
+                                        <TranslateTransform x:Name="TrackTextATranslate" />
+                                    </StackPanel.RenderTransform>
+                                    <TextBlock x:Name="TrackTitleA"
+                                               Text="未在播放"
+                                               Style="{StaticResource TrackTitle}" />
+                                    <TextBlock x:Name="TrackArtistA"
+                                               Text="打开任意音乐应用"
+                                               Style="{StaticResource TrackArtist}" />
+                                </StackPanel>
+                                <StackPanel x:Name="TrackTextB"
+                                            Opacity="0"
+                                            Visibility="Collapsed">
+                                    <StackPanel.RenderTransform>
+                                        <TranslateTransform x:Name="TrackTextBTranslate" />
+                                    </StackPanel.RenderTransform>
+                                    <TextBlock x:Name="TrackTitleB"
+                                               Style="{StaticResource TrackTitle}" />
+                                    <TextBlock x:Name="TrackArtistB"
+                                               Style="{StaticResource TrackArtist}" />
+                                </StackPanel>
+                            </Grid>
+                            <Grid Grid.Row="1" Height="11" Margin="0,8,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <controls:SquircleProgressBar x:Name="TrackProgressBar"
+                                                              Height="3"
+                                                              VerticalAlignment="Center"
+                                                              TrackBrush="#22FFFFFF"
+                                                              FillBrush="#C87C9CFF"
+                                                              CornerSmoothing="0.6"
+                                                              IsHitTestVisible="False" />
+                                <TextBlock x:Name="TrackTime"
+                                           Grid.Column="1"
+                                           Text="0:00 / 0:00"
+                                           FontSize="9"
+                                           Foreground="#FF6E6E73"
+                                           Margin="10,0,0,0"
+                                           VerticalAlignment="Center"
+                                           Typography.NumeralAlignment="Tabular" />
+                            </Grid>
+                        </Grid>
+
+                        <Button x:Name="PinButton"
+                                Grid.Column="2"
+                                Content="&#xE718;"
+                                Style="{StaticResource IconButton}"
+                                Width="22"
+                                Height="22"
+                                FontSize="10"
+                                VerticalAlignment="Top"
+                                HorizontalAlignment="Right"
+                                Click="PinButton_Click"
+                                ToolTip="保持展开" />
+                    </Grid>
+
+                    <Grid x:Name="PlaybackRow"
+                          Grid.Row="1"
+                          Height="40"
+                          Margin="0,10,0,0"
+                          VerticalAlignment="Bottom"
+                          Opacity="0"
+                          IsHitTestVisible="False">
+                        <StackPanel Orientation="Horizontal"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center">
+                            <Button x:Name="PrevButton"
+                                    Content="&#xE892;"
+                                    Style="{StaticResource IconButton}"
+                                    Click="PrevButton_Click"
+                                    ToolTip="上一首" />
+                            <Button x:Name="PlayButton"
+                                    Content="&#xE768;"
+                                    Style="{StaticResource PlayButton}"
+                                    Margin="10,0"
+                                    Click="PlayButton_Click"
+                                    ToolTip="播放 / 暂停" />
+                            <Button x:Name="NextButton"
+                                    Content="&#xE893;"
+                                    Style="{StaticResource IconButton}"
+                                    Click="NextButton_Click"
+                                    ToolTip="下一首" />
+                        </StackPanel>
+
+                        <StackPanel Orientation="Horizontal"
+                                    HorizontalAlignment="Right"
+                                    VerticalAlignment="Center">
+                            <Button x:Name="VolumeButton"
+                                    Content="&#xE767;"
+                                    Style="{StaticResource IconButton}"
+                                    Width="28"
+                                    Height="28"
+                                    FontSize="12"
+                                    Click="VolumeButton_Click"
+                                    ToolTip="音量设置" />
+                            <Button x:Name="ScreenshotButton"
+                                    Content="&#xE722;"
+                                    Style="{StaticResource IconButton}"
+                                    Width="28"
+                                    Height="28"
+                                    FontSize="12"
+                                    Click="ScreenshotButton_Click"
+                                    ToolTip="截图" />
+                            <Button x:Name="LockButton"
+                                    Content="&#xE72E;"
+                                    Style="{StaticResource IconButton}"
+                                    Width="28"
+                                    Height="28"
+                                    FontSize="12"
+                                    Click="LockButton_Click"
+                                    ToolTip="锁屏" />
+                        </StackPanel>
+                    </Grid>
+
+                    <Border x:Name="BottomDivider"
+                            Grid.Row="2"
+                            Height="1"
+                            Background="#1FFFFFFF"
+                            Margin="0,12,0,12"
+                            Opacity="0" />
+
+                    <Grid x:Name="BottomSection"
+                          Grid.Row="3"
+                          Height="44"
+                          Opacity="0"
+                          IsHitTestVisible="False">
+                        <Grid.RenderTransform>
+                            <TranslateTransform x:Name="BottomTranslate" />
+                        </Grid.RenderTransform>
+                        <StackPanel Orientation="Horizontal"
+                                    HorizontalAlignment="Left"
+                                    VerticalAlignment="Center">
+                            <controls:SquircleBorder Style="{StaticResource StatusChip}">
+                                <StackPanel>
+                                    <TextBlock Text="CPU" Style="{StaticResource ChipLabel}" />
+                                    <TextBlock x:Name="CpuValueText" Text="--" Style="{StaticResource ChipValue}" />
+                                </StackPanel>
+                            </controls:SquircleBorder>
+                            <controls:SquircleBorder Style="{StaticResource StatusChip}">
+                                <StackPanel>
+                                    <TextBlock Text="RAM" Style="{StaticResource ChipLabel}" />
+                                    <TextBlock x:Name="RamValueText" Text="--" Style="{StaticResource ChipValue}" />
+                                </StackPanel>
+                            </controls:SquircleBorder>
+                            <controls:SquircleBorder Style="{StaticResource StatusChip}">
+                                <StackPanel>
+                                    <TextBlock Text="电池" Style="{StaticResource ChipLabel}" />
+                                    <TextBlock x:Name="BatteryValueText" Text="--" Style="{StaticResource ChipValue}" />
+                                </StackPanel>
+                            </controls:SquircleBorder>
+                        </StackPanel>
+
+                        <StackPanel Orientation="Horizontal"
+                                    HorizontalAlignment="Right"
+                                    VerticalAlignment="Center">
+                            <StackPanel Margin="0,0,6,0" VerticalAlignment="Center">
+                                <TextBlock Text="专注" Style="{StaticResource ChipLabel}" />
+                                <TextBlock x:Name="FocusTimeText"
+                                           Text="25:00"
+                                           FontSize="17"
+                                           FontWeight="SemiBold"
+                                           Foreground="#FFF5F5F7"
+                                           Typography.NumeralAlignment="Tabular"
+                                           Margin="0,1,0,0" />
+                                <Grid Height="2" Width="42" Margin="0,3,0,0">
+                                    <controls:SquircleProgressBar x:Name="FocusProgressBar"
+                                                                  TrackBrush="#22FFFFFF"
+                                                                  FillBrush="#FF7C9CFF"
+                                                                  CornerSmoothing="0.6"
+                                                                  IsHitTestVisible="False" />
+                                </Grid>
+                            </StackPanel>
+                            <Button x:Name="FocusToggleButton"
+                                    Content="&#xE768;"
+                                    Style="{StaticResource IconButton}"
+                                    Width="26"
+                                    Height="26"
+                                    FontSize="11"
+                                    Click="FocusToggleButton_Click"
+                                    ToolTip="开始计时" />
+                            <Button x:Name="FocusResetButton"
+                                    Content="&#xE72C;"
+                                    Style="{StaticResource IconButton}"
+                                    Width="26"
+                                    Height="26"
+                                    FontSize="11"
+                                    Click="FocusResetButton_Click"
+                                    ToolTip="重置计时" />
+                        </StackPanel>
+                    </Grid>
+                </Grid>
+            </Grid>
+            </controls:SquircleBorder>
+        </controls:SquircleBorder>
+
+        <Popup x:Name="MenuPopup"
+               PlacementTarget="{Binding ElementName=Root}"
+               Placement="MousePoint"
+               StaysOpen="False"
+               AllowsTransparency="True">
+            <controls:SquircleBorder x:Name="MenuSurface"
+                                     Width="184"
+                                     Margin="10"
+                                     Padding="4"
+                                     Opacity="0"
+                                     Fill="#F21C1C1E"
+                                     Stroke="#33FFFFFF"
+                                     StrokeThickness="1"
+                                     CornerRadius="14"
+                                     CornerSmoothing="0.6">
+                <controls:SquircleBorder.RenderTransform>
+                    <TranslateTransform x:Name="MenuSurfaceTranslate" Y="-3" />
+                </controls:SquircleBorder.RenderTransform>
+                <controls:SquircleBorder.Effect>
+                    <DropShadowEffect BlurRadius="20"
+                                      ShadowDepth="4"
+                                      Direction="270"
+                                      Opacity="0.55"
+                                      Color="#000000" />
+                </controls:SquircleBorder.Effect>
+                <StackPanel>
+                    <Button Style="{StaticResource MenuButton}" Click="MenuPin_Click">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="18" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock x:Name="MenuPinCheck"
+                                       Text="&#xE73E;"
+                                       FontFamily="{StaticResource IconFont}"
+                                       FontSize="11"
+                                       Foreground="#FF7C9CFF"
+                                       VerticalAlignment="Center"
+                                       Visibility="Collapsed" />
+                            <TextBlock Grid.Column="1" Text="保持展开" VerticalAlignment="Center" />
+                        </Grid>
+                    </Button>
+                    <Button Style="{StaticResource MenuButton}" Click="MenuReduceMotion_Click">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="18" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock x:Name="MenuReduceMotionCheck"
+                                       Text="&#xE73E;"
+                                       FontFamily="{StaticResource IconFont}"
+                                       FontSize="11"
+                                       Foreground="#FF7C9CFF"
+                                       VerticalAlignment="Center"
+                                       Visibility="Collapsed" />
+                            <TextBlock Grid.Column="1" Text="减少动态效果" VerticalAlignment="Center" />
+                        </Grid>
+                    </Button>
+                    <Button Style="{StaticResource MenuButton}" Click="MenuStartup_Click">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="18" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock x:Name="MenuStartupCheck"
+                                       Text="&#xE73E;"
+                                       FontFamily="{StaticResource IconFont}"
+                                       FontSize="11"
+                                       Foreground="#FF7C9CFF"
+                                       VerticalAlignment="Center"
+                                       Visibility="Collapsed" />
+                            <TextBlock Grid.Column="1" Text="开机自动启动" VerticalAlignment="Center" />
+                        </Grid>
+                    </Button>
+                    <Border Height="1" Background="#26FFFFFF" Margin="8,4" />
+                    <Button Style="{StaticResource MenuButton}" Click="MenuExit_Click">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="18" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="1" Text="退出" VerticalAlignment="Center" />
+                        </Grid>
+                    </Button>
+                </StackPanel>
+            </controls:SquircleBorder>
+        </Popup>
+    </Grid>
+</Window>
