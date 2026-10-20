@@ -14,8 +14,8 @@
       {
         "label": "main",
         "title": "Dynamic Island",
-        "width": 432,
-        "height": 272,
+        "width": 396,
+        "height": 254,
         "resizable": false,
         "fullscreen": false,
         "decorations": false,
@@ -31,6 +31,21 @@
     }
   },
   "bundle": {
-    "active": false
+    "active": true,
+    "targets": [
+      "nsis"
+    ],
+    "icon": [
+      "icons/icon.ico"
+    ],
+    "shortDescription": "Windows desktop dynamic island",
+    "longDescription": "A lightweight dynamic island for Windows with media controls, system monitoring and quick settings.",
+    "windows": {
+      "nsis": {
+        "installMode": "currentUser",
+        "installerIcon": "icons/icon.ico",
+        "startMenuFolder": "Dynamic Island"
+      }
+    }
   }
 }

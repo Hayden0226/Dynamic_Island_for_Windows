@@ -65,3 +65,14 @@ export async function setBrightness(percent: number): Promise<void> {
   if (!isTauri()) return;
   await invoke("set_brightness", { percent });
 }
+
+export async function setIslandHitRegion(
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  radius: number,
+): Promise<void> {
+  if (!isTauri()) return;
+  await invoke("set_island_hit_region", { x, y, width, height, radius });
+}

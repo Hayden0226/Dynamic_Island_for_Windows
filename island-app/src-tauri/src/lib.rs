@@ -11,7 +11,12 @@ use std::{
 
 use serde::Serialize;
 use base64::{engine::general_purpose::STANDARD, Engine as _};
-use tauri::{Emitter, Manager};
+use tauri::{
+    menu::{CheckMenuItem, Menu, MenuItem},
+    tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
+    Emitter, Manager,
+};
+use tauri_plugin_autostart::ManagerExt as _;
 use windows::{
     core::{BSTR, Result as WinResult, VARIANT},
     Media::Control::{
@@ -22,7 +27,8 @@ use windows::{
     },
     Storage::Streams::DataReader,
     Win32::{
-        Foundation::{FILETIME, HMODULE},
+        Foundation::{FILETIME, HMODULE, HWND, TRUE},
+        Graphics::Gdi::{CreateRoundRectRgn, DeleteObject, SetWindowRgn},
         Media::Audio::{eConsole, eRender, IMMDeviceEnumerator, MMDeviceEnumerator},
         Media::Audio::Endpoints::IAudioEndpointVolume,
         System::{
@@ -38,6 +44,10 @@ use windows::{
 
 const SURFACE_COLLAPSED: u8 = 0;
 const SURFACE_EXPANDED: u8 = 1;
+const WINDOW_LOGICAL_WIDTH: f64 = 396.0;
+const SURFACE_TOP: f64 = 26.0;
+const OPTICAL_OFFSET_X: f64 = -1.0;
+const REGION_MARGIN: f64 = 4.0;
 
 #[derive(Clone, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -179,6 +189,59 @@ fn set_brightness(percent: f64) -> Result<(), String> {
     set_brightness_percent(percent).map_err(|error| error.to_string())
 }
 
+fn island_region_bounds(width: f64, height: f64, radius: f64) -> (f64, f64, f64, f64, f64) {
+    let x = (WINDOW_LOGICAL_WIDTH - width) / 2.0 + OPTICAL_OFFSET_X - REGION_MARGIN;
+    let y = SURFACE_TOP - REGION_MARGIN;
+    let region_width = width + REGION_MARGIN * 2.0;
+    let region_height = height + REGION_MARGIN * 2.0;
+    (x, y, region_width, region_height, radius + REGION_MARGIN)
+}
+
+fn apply_island_hit_region<R: tauri::Runtime>(
+    window: &tauri::WebviewWindow<R>,
+    x: f64,
+    y: f64,
+    width: f64,
+    height: f64,
+    radius: f64,
+) -> Result<(), String> {
+    let scale = window.scale_factor().map_err(|error| error.to_string())?;
+    let left = (x * scale).round() as i32;
+    let top = (y * scale).round() as i32;
+    let right = left + ((width * scale).round() as i32).max(1);
+    let bottom = top + ((height * scale).round() as i32).max(1);
+    let corner = ((radius * 2.0 * scale).round() as i32)
+        .clamp(0, (right - left).min(bottom - top));
+    let hwnd = window.hwnd().map_err(|error| error.to_string())?;
+
+    unsafe {
+        let region = CreateRoundRectRgn(left, top, right, bottom, corner, corner);
+        if region.is_invalid() {
+            return Err("无法创建灵动岛窗口区域".into());
+        }
+        if SetWindowRgn(HWND(hwnd.0), region, TRUE) == 0 {
+            let _ = DeleteObject(region);
+            return Err("无法应用灵动岛窗口区域".into());
+        }
+    }
+    Ok(())
+}
+
+#[tauri::command]
+fn set_island_hit_region(
+    app: tauri::AppHandle,
+    x: f64,
+    y: f64,
+    width: f64,
+    height: f64,
+    radius: f64,
+) -> Result<(), String> {
+    let Some(window) = app.get_webview_window("main") else {
+        return Ok(());
+    };
+    apply_island_hit_region(&window, x, y, width, height, radius)
+}
+
 #[tauri::command]
 fn notify(app: tauri::AppHandle, title: String, body: String) -> Result<(), String> {
     let payload = NotificationPayload {
@@ -196,8 +259,18 @@ pub fn run() {
     let (media_tx, media_rx) = mpsc::channel();
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            show_main_window(app);
+        }))
+        .plugin(tauri_plugin_autostart::init(
+            tauri_plugin_autostart::MacosLauncher::LaunchAgent,
+            Some(vec![]),
+        ))
         .manage(AppState::new(media_tx))
         .setup(|app| {
+            setup_tray(app)?;
+            #[cfg(not(debug_assertions))]
+            enable_autostart_on_first_run(app);
             start_media_worker(app.handle().clone(), media_rx);
             start_system_worker(app.handle().clone());
             position_main_window(app)?;
@@ -210,16 +283,108 @@ pub fn run() {
             surface_state_changed,
             set_volume,
             set_brightness,
+            set_island_hit_region,
             notify
         ])
         .run(tauri::generate_context!())
         .expect("error while running Dynamic Island");
 }
 
+fn show_main_window(app: &tauri::AppHandle) {
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.show();
+        let _ = window.set_focus();
+    }
+}
+
+fn toggle_autostart(app: &tauri::AppHandle) -> bool {
+    let manager = app.autolaunch();
+    if manager.is_enabled().unwrap_or(false) {
+        let _ = manager.disable();
+    } else {
+        let _ = manager.enable();
+    }
+    manager.is_enabled().unwrap_or(false)
+}
+
+#[cfg(not(debug_assertions))]
+fn enable_autostart_on_first_run(app: &tauri::App) {
+    let manager = app.autolaunch();
+    if manager.is_enabled().unwrap_or(false) {
+        let _ = manager.enable();
+        return;
+    }
+    let marker = app
+        .path()
+        .app_config_dir()
+        .ok()
+        .map(|dir| dir.join("autostart.initialized"));
+    if let Some(path) = marker.as_ref() {
+        if path.exists() {
+            return;
+        }
+    }
+    if manager.enable().is_ok() {
+        if let Some(path) = marker {
+            if let Some(parent) = path.parent() {
+                let _ = std::fs::create_dir_all(parent);
+            }
+            let _ = std::fs::write(path, b"1");
+        }
+    }
+}
+
+fn setup_tray(app: &tauri::App) -> tauri::Result<()> {
+    let show = MenuItem::with_id(app, "show", "显示灵动岛", true, None::<&str>)?;
+    let autostart_enabled = app.autolaunch().is_enabled().unwrap_or(false);
+    let autostart = CheckMenuItem::with_id(
+        app,
+        "autostart",
+        "开机自启",
+        true,
+        autostart_enabled,
+        None::<&str>,
+    )?;
+    let quit = MenuItem::with_id(app, "quit", "退出", true, None::<&str>)?;
+    let menu = Menu::with_items(app, &[&show, &autostart, &quit])?;
+    let autostart_item = autostart.clone();
+
+    let mut builder = TrayIconBuilder::with_id("main-tray")
+        .tooltip("Dynamic Island")
+        .menu(&menu)
+        .show_menu_on_left_click(false)
+        .on_menu_event(move |app, event| match event.id.as_ref() {
+            "show" => show_main_window(app),
+            "autostart" => {
+                let enabled = toggle_autostart(app);
+                let _ = autostart_item.set_checked(enabled);
+            }
+            "quit" => app.exit(0),
+            _ => {}
+        })
+        .on_tray_icon_event(|tray, event| {
+            if let TrayIconEvent::Click {
+                button: MouseButton::Left,
+                button_state: MouseButtonState::Up,
+                ..
+            } = event
+            {
+                show_main_window(tray.app_handle());
+            }
+        });
+
+    if let Some(icon) = app.default_window_icon().cloned() {
+        builder = builder.icon(icon);
+    }
+    builder.build(app)?;
+    Ok(())
+}
 fn position_main_window(app: &tauri::App) -> tauri::Result<()> {
     let Some(window) = app.get_webview_window("main") else {
         return Ok(());
     };
+    let _ = window.set_decorations(false);
+    let _ = window.set_size(tauri::LogicalSize::new(WINDOW_LOGICAL_WIDTH, 254.0));
 
     if let Ok(Some(monitor)) = window.current_monitor() {
         let monitor_size = monitor.size();
@@ -230,6 +395,16 @@ fn position_main_window(app: &tauri::App) -> tauri::Result<()> {
         let _ = window.set_position(tauri::PhysicalPosition::new(x, y));
     }
 
+    let (region_x, region_y, region_width, region_height, region_radius) =
+        island_region_bounds(176.0, 48.0, 24.0);
+    let _ = apply_island_hit_region(
+        &window,
+        region_x,
+        region_y,
+        region_width,
+        region_height,
+        region_radius,
+    );
     let _ = window.show();
     Ok(())
 }
@@ -237,6 +412,7 @@ fn position_main_window(app: &tauri::App) -> tauri::Result<()> {
 fn start_media_worker(app: tauri::AppHandle, receiver: Receiver<MediaCommand>) {
     thread::spawn(move || {
         let _ = unsafe { CoInitializeEx(None, COINIT_MULTITHREADED) };
+        let mut tick: u32 = 0;
 
         loop {
             while let Ok(command) = receiver.try_recv() {
@@ -245,8 +421,9 @@ fn start_media_worker(app: tauri::AppHandle, receiver: Receiver<MediaCommand>) {
 
             let expanded =
                 app.state::<AppState>().surface.load(Ordering::Relaxed) == SURFACE_EXPANDED;
+            let poll_interval = if expanded { 4 } else { 6 };
 
-            if expanded {
+            if tick % poll_interval == 0 {
                 if let Ok(snapshot) = read_media_snapshot() {
                     let state = app.state::<AppState>();
                     let mut cached = state.media.lock().unwrap();
@@ -262,10 +439,10 @@ fn start_media_worker(app: tauri::AppHandle, receiver: Receiver<MediaCommand>) {
                         *cached = snapshot;
                     }
                 }
-                thread::sleep(Duration::from_millis(2000));
-            } else {
-                thread::sleep(Duration::from_millis(500));
             }
+
+            tick = tick.wrapping_add(1);
+            thread::sleep(Duration::from_millis(500));
         }
     });
 }

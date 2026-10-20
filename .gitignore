@@ -6,3 +6,4 @@ probe/
 *.user
 *.suo
 
+/Dynamic Island * Setup.exe

@@ -31,13 +31,13 @@ interface Transition {
   total: number;
 }
 
-export function frameForMode(mode: IslandMode): IslandFrame {
+export function frameForMode(mode: IslandMode, hasMedia = true): IslandFrame {
   const size =
     mode === "expanded"
-      ? { width: METRICS.expandedWidth, height: METRICS.expandedHeight }
+      ? { width: METRICS.expandedWidth, height: hasMedia ? METRICS.expandedHeight : METRICS.expandedCompactHeight }
       : mode === "peek"
         ? { width: METRICS.peekWidth, height: METRICS.peekHeight }
-        : { width: METRICS.collapsedWidth, height: METRICS.collapsedHeight };
+        : { width: hasMedia ? METRICS.collapsedWidth : METRICS.collapsedCompactWidth, height: METRICS.collapsedHeight };
   const cornerRadius = Math.min(METRICS.cornerRadius, size.height / 2);
   if (mode === "expanded") {
     return { width: size.width, height: size.height, cornerRadius, collapsedOpacity: 0, contentOpacity: 1, contentOffsetY: 0, controlsOpacity: 1, bottomOpacity: 1, bottomOffsetY: 0 };
@@ -55,8 +55,11 @@ export class IslandAnimator {
   private raf = 0;
   private target: IslandMode;
 
-  constructor(initial: IslandMode, private readonly onFrame: (frame: IslandFrame) => void) {
-    this.frame = frameForMode(initial);
+  private hasMedia: boolean;
+
+  constructor(initial: IslandMode, private readonly onFrame: (frame: IslandFrame) => void, hasMedia = true) {
+    this.hasMedia = hasMedia;
+    this.frame = frameForMode(initial, hasMedia);
     this.target = initial;
     this.onFrame(this.frame);
   }
@@ -65,11 +68,12 @@ export class IslandAnimator {
     return this.frame;
   }
 
-  animateTo(mode: IslandMode, reduceMotion: boolean): void {
-    if (mode === this.target && this.transition === null) return;
+  animateTo(mode: IslandMode, reduceMotion: boolean, hasMedia = this.hasMedia): void {
+    if (mode === this.target && hasMedia === this.hasMedia && this.transition === null) return;
     const from = this.frame;
-    const to = frameForMode(mode);
+    const to = frameForMode(mode, hasMedia);
     this.target = mode;
+    this.hasMedia = hasMedia;
     this.transition = buildTransition(from, to, mode, reduceMotion);
     this.startTime = 0;
     this.ensureRunning();
@@ -86,7 +90,7 @@ export class IslandAnimator {
       if (!this.startTime) this.startTime = now;
       const elapsed = now - this.startTime;
       if (elapsed >= transition.total) {
-        this.frame = frameForMode(this.target);
+        this.frame = frameForMode(this.target, this.hasMedia);
         this.transition = null;
         this.raf = 0;
         this.onFrame(this.frame);
@@ -122,14 +126,14 @@ function buildTransition(from: IslandFrame, to: IslandFrame, mode: IslandMode, r
         : METRICS.peekDuration;
   const sizeEase = balanced;
 
-  const collapsedDelay = reduceMotion ? 0 : toCollapsed ? 180 : 0;
-  const collapsedDuration = reduceMotion ? 0 : toCollapsed ? 150 : 120;
-  const contentDelay = reduceMotion ? 0 : toCollapsed ? 0 : toExpanded ? 160 : 150;
-  const contentDuration = reduceMotion ? 0 : toCollapsed ? 120 : 180;
-  const controlsDelay = reduceMotion ? 0 : toExpanded ? 230 : 0;
-  const controlsDuration = reduceMotion ? 0 : toExpanded ? 150 : 90;
-  const bottomDelay = reduceMotion ? 0 : toExpanded ? 260 : 0;
-  const bottomDuration = reduceMotion ? 0 : 140;
+  const collapsedDelay = reduceMotion ? 0 : toCollapsed ? 50 : 0;
+  const collapsedDuration = reduceMotion ? 0 : toCollapsed ? 120 : 90;
+  const contentDelay = reduceMotion ? 0 : toCollapsed ? 0 : toExpanded ? 40 : 80;
+  const contentDuration = reduceMotion ? 0 : toCollapsed ? 100 : 170;
+  const controlsDelay = reduceMotion ? 0 : toExpanded ? 140 : 0;
+  const controlsDuration = reduceMotion ? 0 : toExpanded ? 140 : 90;
+  const bottomDelay = reduceMotion ? 0 : toExpanded ? 170 : 0;
+  const bottomDuration = reduceMotion ? 0 : toCollapsed ? 100 : 120;
 
   const transition: Transition = {
     width: new Track(from.width, to.width, 0, sizeDuration, sizeEase),
@@ -137,7 +141,7 @@ function buildTransition(from: IslandFrame, to: IslandFrame, mode: IslandMode, r
     cornerRadius: new Track(from.cornerRadius, to.cornerRadius, 0, sizeDuration, sizeEase),
     collapsedOpacity: new Track(from.collapsedOpacity, to.collapsedOpacity, collapsedDelay, collapsedDuration, outCubic),
     contentOpacity: new Track(from.contentOpacity, to.contentOpacity, contentDelay, contentDuration, outCubic),
-    contentOffsetY: new Track(from.contentOffsetY, to.contentOffsetY, toCollapsed ? 0 : contentDelay, toCollapsed ? 120 : contentDuration, outCubic),
+    contentOffsetY: new Track(from.contentOffsetY, to.contentOffsetY, toCollapsed ? 0 : contentDelay, toCollapsed ? 100 : contentDuration, outCubic),
     controlsOpacity: new Track(from.controlsOpacity, to.controlsOpacity, controlsDelay, controlsDuration, outCubic),
     bottomOpacity: new Track(from.bottomOpacity, to.bottomOpacity, bottomDelay, bottomDuration, outCubic),
     bottomOffsetY: new Track(from.bottomOffsetY, to.bottomOffsetY, bottomDelay, bottomDuration, outCubic),

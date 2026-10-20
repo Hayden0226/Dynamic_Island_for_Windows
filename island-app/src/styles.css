@@ -36,13 +36,24 @@ body {
   width: 100%;
   height: 100%;
   overflow: visible;
+  pointer-events: none;
+}
+
+.island-surface {
+  position: absolute;
+  top: 26px;
+  left: 50%;
+  pointer-events: auto;
 }
 
 .island-shell {
   position: absolute;
-  top: 26px;
-  left: 50%;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
   filter: drop-shadow(0 -1px 2px rgba(0, 0, 0, 0.5));
+  pointer-events: none;
 }
 
 .shell-rim {
@@ -57,9 +68,7 @@ body {
 
 .collapsed-view {
   position: absolute;
-  top: 26px;
-  left: 50%;
-  height: 48px;
+  inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -98,14 +107,33 @@ body {
 
 .expanded-view {
   position: absolute;
-  top: 42px;
+  top: 16px;
   left: 50%;
   width: 344px;
-  height: 188px;
+  height: calc(100% - 32px);
+  transform: translateX(-50%);
   display: flex;
   flex-direction: column;
   color: var(--island-text);
   pointer-events: auto;
+  overflow: hidden;
+}
+
+.expanded-view.compact {
+  justify-content: center;
+}
+
+.media-section {
+  max-height: 140px;
+  opacity: 1;
+  overflow: hidden;
+  transition: max-height 300ms cubic-bezier(0.4, 0, 0.2, 1), opacity 160ms ease;
+}
+
+.expanded-view.compact .media-section {
+  max-height: 0;
+  opacity: 0;
+  pointer-events: none;
 }
 
 .top-row {
