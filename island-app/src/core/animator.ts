@@ -23,6 +23,7 @@ interface Transition {
   height: Track;
   collapsedOpacity: Track;
   contentOpacity: Track;
+  contentOffsetY: Track;
   total: number;
 }
 
@@ -35,12 +36,12 @@ export function frameForMode(mode: IslandMode, hasMedia = true): IslandFrame {
         : { width: hasMedia ? METRICS.collapsedWidth : METRICS.collapsedCompactWidth, height: METRICS.collapsedHeight };
   const cornerRadius = METRICS.cornerRadius;
   if (mode === "expanded") {
-    return { width: size.width, height: size.height, cornerRadius, collapsedOpacity: 0, contentOpacity: 1 };
+    return { width: size.width, height: size.height, cornerRadius, collapsedOpacity: 0, contentOpacity: 1, contentOffsetY: 0 };
   }
   if (mode === "peek") {
-    return { width: size.width, height: size.height, cornerRadius, collapsedOpacity: 0, contentOpacity: 1 };
+    return { width: size.width, height: size.height, cornerRadius, collapsedOpacity: 0, contentOpacity: 1, contentOffsetY: 0 };
   }
-  return { width: size.width, height: size.height, cornerRadius, collapsedOpacity: 1, contentOpacity: 0 };
+  return { width: size.width, height: size.height, cornerRadius, collapsedOpacity: 1, contentOpacity: 0, contentOffsetY: -METRICS.contentRise };
 }
 
 export class IslandAnimator {
@@ -97,6 +98,7 @@ export class IslandAnimator {
         cornerRadius: METRICS.cornerRadius,
         collapsedOpacity: transition.collapsedOpacity.valueAt(elapsed),
         contentOpacity: transition.contentOpacity.valueAt(elapsed),
+        contentOffsetY: transition.contentOffsetY.valueAt(elapsed),
       };
       this.onFrame(this.frame);
       this.raf = requestAnimationFrame(tick);
@@ -121,14 +123,17 @@ function buildTransition(from: IslandFrame, to: IslandFrame, mode: IslandMode, r
   const collapsedDuration = reduceMotion ? 0 : toCollapsed ? Math.round(sizeDuration * 0.38) : 80;
   const sizeChanges = Math.abs(from.width - to.width) > 0.5 || Math.abs(from.height - to.height) > 0.5;
   const refreshOnly = refreshContent && !sizeChanges;
-  const contentDelay = reduceMotion ? 0 : toCollapsed ? 0 : refreshOnly ? 0 : sizeDuration + 8;
+  const contentDelay = 0;
   const contentDuration = reduceMotion ? 0 : toCollapsed ? Math.round(sizeDuration * 0.3) : METRICS.contentFade;
+  const contentMotionDuration = reduceMotion ? 0 : toCollapsed ? Math.round(sizeDuration * 0.3) : refreshOnly ? METRICS.contentFade : sizeDuration;
+  const contentFromOffset = refreshContent ? -METRICS.contentRise : from.contentOffsetY;
 
   const transition: Transition = {
     width: new Track(from.width, to.width, 0, sizeDuration, sizeEase),
     height: new Track(from.height, to.height, 0, sizeDuration, sizeEase),
     collapsedOpacity: new Track(from.collapsedOpacity, to.collapsedOpacity, collapsedDelay, collapsedDuration, outCubic),
     contentOpacity: new Track(refreshContent ? 0 : from.contentOpacity, to.contentOpacity, contentDelay, contentDuration, outCubic),
+    contentOffsetY: new Track(contentFromOffset, to.contentOffsetY, contentDelay, contentMotionDuration, balanced),
     total: 0,
   };
   transition.total = Math.max(
@@ -136,6 +141,7 @@ function buildTransition(from: IslandFrame, to: IslandFrame, mode: IslandMode, r
     transition.height.delay + transition.height.duration,
     transition.collapsedOpacity.delay + transition.collapsedOpacity.duration,
     transition.contentOpacity.delay + transition.contentOpacity.duration,
+    transition.contentOffsetY.delay + transition.contentOffsetY.duration,
   );
   return transition;
 }

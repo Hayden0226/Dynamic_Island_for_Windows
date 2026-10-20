@@ -12,6 +12,7 @@ const frame = reactive<IslandFrame>({
   cornerRadius: METRICS.cornerRadius,
   collapsedOpacity: 1,
   contentOpacity: 0,
+  contentOffsetY: -METRICS.contentRise,
 });
 
 const timeText = ref("--:--");
@@ -142,8 +143,10 @@ const surfaceClipStyle = computed(() => ({
 const collapsedStyle = computed(() => ({
   opacity: frame.collapsedOpacity,
 }));
+const contentScale = computed(() => Math.min(1, frame.width / METRICS.expandedWidth));
 const expandedStyle = computed(() => ({
   opacity: frame.contentOpacity,
+  transform: `translateX(-50%) translateY(${frame.contentOffsetY}px) scale(${contentScale.value})`,
   pointerEvents: state.mode === "collapsed" ? ("none" as const) : ("auto" as const),
 }));
 

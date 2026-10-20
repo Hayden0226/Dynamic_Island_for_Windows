@@ -18,7 +18,8 @@ export const METRICS = {
   collapseDuration: 260,
   peekDuration: 300,
   collapseDelay: 140,
-  contentFade: 100,
+  contentFade: 180,
+  contentRise: 10,
 } as const;
 
 export type IslandMode = "collapsed" | "peek" | "expanded";
@@ -29,5 +30,6 @@ export interface IslandFrame {
   cornerRadius: number;
   collapsedOpacity: number;
   contentOpacity: number;
+  contentOffsetY: number;
 }
 

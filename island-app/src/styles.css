@@ -119,6 +119,7 @@ body {
   width: 344px;
   height: calc(100% - 32px);
   transform: translateX(-50%);
+  transform-origin: top center;
   display: flex;
   flex-direction: column;
   color: var(--island-text);
