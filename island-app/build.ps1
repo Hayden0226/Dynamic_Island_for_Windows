@@ -28,7 +28,7 @@ if ($args[0] -eq "dev") {
         Sort-Object LastWriteTime -Descending |
         Select-Object -First 1
     if ($installer) {
-        $destination = Join-Path (Split-Path $PSScriptRoot -Parent) "Dynamic Island $version Setup.exe"
+        $destination = Join-Path (Split-Path $PSScriptRoot -Parent) "Dynamic-Island-$version-Setup.exe"
         Copy-Item $installer.FullName $destination -Force
         Write-Host "Installer: $destination"
     }
