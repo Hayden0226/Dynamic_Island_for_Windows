@@ -25,21 +25,21 @@
 ### 1. 下载安装包
 
 1. 打开 [Releases](https://github.com/Hayden0226/Dynamic_Island_for_Windows/releases/latest) 页面。
-2. 在最新版本的 `Assets` 中下载 `Dynamic-Island-2.0.1-Setup.exe`。
-3. 也可以直接下载 2.0.1：[Dynamic-Island-2.0.1-Setup.exe](https://github.com/Hayden0226/Dynamic_Island_for_Windows/releases/download/v2.0.1/Dynamic-Island-2.0.1-Setup.exe)。
+2. 在最新版本的 `Assets` 中下载 `Dynamic-Island-2.0.2-Setup.exe`。
+3. 也可以直接下载 2.0.2：[Dynamic-Island-2.0.2-Setup.exe](https://github.com/Hayden0226/Dynamic_Island_for_Windows/releases/download/v2.0.2/Dynamic-Island-2.0.2-Setup.exe)。
 
 安装包大小约 `1.95 MiB`，适用于 64 位 Windows。
 
 可选校验：在下载目录打开 PowerShell，执行：
 
 ```powershell
-Get-FileHash .\Dynamic-Island-2.0.1-Setup.exe -Algorithm SHA256
+Get-FileHash .\Dynamic-Island-2.0.2-Setup.exe -Algorithm SHA256
 ```
 
-2.0.1 的 SHA256 应为：
+2.0.2 的 SHA256 应为：
 
 ```text
-8C9602058513B2692DA948F41B9A519BC4CCA75EE0FA8AB21696EF5FDD8BBBF9
+53C74C8E0AAE3CBE7CAF8FBE69907262BE32E10725C3CD51039446BE20E7BB2C
 ```
 
 ### 2. 安装
@@ -218,7 +218,7 @@ powershell -ExecutionPolicy Bypass -File .\build.ps1
 
 ```text
 island-app\src-tauri\target\release\dynamic-island-windows.exe
-island-app\src-tauri\target\release\bundle\nsis\Dynamic Island_2.0.1_x64-setup.exe
+island-app\src-tauri\target\release\bundle\nsis\Dynamic Island_2.0.2_x64-setup.exe
 ```
 
 其中 `setup.exe` 是可直接分发的安装包，安装后常驻托盘并默认开机自启。
