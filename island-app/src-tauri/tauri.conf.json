@@ -44,7 +44,8 @@
       "nsis": {
         "installMode": "currentUser",
         "installerIcon": "icons/icon.ico",
-        "startMenuFolder": "Dynamic Island"
+        "startMenuFolder": "Dynamic Island",
+        "installerHooks": "nsis/hooks.nsh"
       }
     }
   }
