@@ -145,9 +145,9 @@ GPU 温度依赖 NVIDIA NVML。非 NVIDIA 显卡或驱动不可用时，只显�
 
 ```mermaid
 flowchart LR
-  UI["Vue 3 + TypeScript<br/>界面 · 状态 · 动画"] --> IPC["Tauri 2 IPC<br/>命令与事件"]
-  IPC --> HOST["Rust 宿主<br/>窗口 · 托盘 · 媒体 · 系统数据"]
-  HOST --> WIN["Windows APIs<br/>Media Session · WMI · NVML · Core Audio"]
+  UI["Vue 3 + TypeScript"] --> IPC["Tauri 2 IPC"]
+  IPC --> HOST["Rust 宿主"]
+  HOST --> WIN["Windows APIs: Media Session / WMI / NVML / Core Audio"]
 ```
 
 - **Vue 3 + TypeScript** 承载界面、动画系统、状态管理与设置。
