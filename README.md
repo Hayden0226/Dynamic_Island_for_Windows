@@ -1,6 +1,6 @@
 # Dynamic Island for Windows
 
-一个面向 Windows 桌面的轻量「灵动岛」。第一阶段以原生 WPF 验证视觉质感与动画；第二阶段迁移到 Vue 3 + TypeScript + Tauri 2 + Rust，扩展系统监控与快捷控制能力，同时保持收起态接近零后台开销。
+一个面向 Windows 桌面的轻量「灵动岛」。使用 Vue 3 + TypeScript + Tauri 2 + Rust 构建，兼顾视觉质感、交互动画与低后台开销。
 
 ## 界面预览
 
@@ -233,14 +233,6 @@ powershell -ExecutionPolicy Bypass -File .\build.ps1 dev
 
 ```powershell
 npm run dev
-```
-
-## 第一阶段（WPF · 保留在仓库根目录）
-
-第一阶段以原生 WPF 实现三态交互、媒体控制与轻量系统状态，用于验证视觉质感与动画基线。
-```powershell
-dotnet build .\DynamicIsland.csproj -c Release
-dotnet run --project .\DynamicIsland.csproj -c Release
 ```
 
 ## 可靠性

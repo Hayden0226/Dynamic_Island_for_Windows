@@ -1,9 +1,6 @@
-bin/
-obj/
-publish/
-probe/
 .vs/
 *.user
 *.suo
 
 /Dynamic Island * Setup.exe
+/Dynamic-Island-*-Setup.exe

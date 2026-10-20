@@ -2,7 +2,7 @@ const rad = (deg: number) => (deg * Math.PI) / 180;
 
 const round = (value: number) => Number(value.toFixed(2));
 
-// Figma-style squircle, ported from WPF CreateSquircleGeometry.
+// Figma-style continuous-curvature squircle.
 function squirclePath(width: number, height: number, cornerRadius: number, smoothingInput: number): string {
   const budget = Math.min(width, height) / 2;
   const radius = Math.min(Math.max(cornerRadius, 0), budget);
