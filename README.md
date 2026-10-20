@@ -144,7 +144,7 @@ GPU 温度依赖 NVIDIA NVML。非 NVIDIA 显卡或驱动不可用时，只显�
 ## 技术架构
 
 ```mermaid
-flowchart LR
+flowchart TB
   UI["Vue 3 + TypeScript"] --> IPC["Tauri 2 IPC"]
   IPC --> HOST["Rust 宿主"]
   HOST --> WIN["Windows APIs: Media Session / WMI / NVML / Core Audio"]
