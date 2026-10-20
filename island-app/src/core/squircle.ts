@@ -1,67 +1,6 @@
 const rad = (deg: number) => (deg * Math.PI) / 180;
 
-interface Point {
-  x: number;
-  y: number;
-}
-
 const round = (value: number) => Number(value.toFixed(2));
-
-function appendSuperellipseCorner(
-  points: Point[],
-  centerX: number,
-  centerY: number,
-  radiusX: number,
-  radiusY: number,
-  power: number,
-  xSign: number,
-  ySign: number,
-  reverse: boolean,
-  segments = 24,
-): void {
-  for (let i = 1; i <= segments; i++) {
-    const step = reverse ? 1 - i / segments : i / segments;
-    const angle = (Math.PI / 2) * step;
-    points.push({
-      x: centerX + xSign * radiusX * Math.pow(Math.cos(angle), power),
-      y: centerY + ySign * radiusY * Math.pow(Math.sin(angle), power),
-    });
-  }
-}
-
-// Continuous-curvature capsule, ported from WPF CreateContinuousCapsuleGeometry.
-function continuousCapsulePath(width: number, height: number, radius: number): string {
-  const horizontal = width >= height;
-  const power = 2 / 2.4;
-  const endSpan = Math.min(radius * 1.12, (horizontal ? width : height) / 2);
-  const spanX = horizontal ? endSpan : radius;
-  const spanY = horizontal ? radius : endSpan;
-
-  const commands: string[] = [`M ${round(spanX)} 0`];
-  commands.push(`L ${round(width - spanX)} 0`);
-
-  const corner: Point[] = [];
-  appendSuperellipseCorner(corner, width - spanX, spanY, spanX, spanY, power, 1, -1, true);
-  for (const p of corner) commands.push(`L ${round(p.x)} ${round(p.y)}`);
-  commands.push(`L ${round(width)} ${round(height - spanY)}`);
-
-  corner.length = 0;
-  appendSuperellipseCorner(corner, width - spanX, height - spanY, spanX, spanY, power, 1, 1, false);
-  for (const p of corner) commands.push(`L ${round(p.x)} ${round(p.y)}`);
-  commands.push(`L ${round(spanX)} ${round(height)}`);
-
-  corner.length = 0;
-  appendSuperellipseCorner(corner, spanX, height - spanY, spanX, spanY, power, -1, 1, true);
-  for (const p of corner) commands.push(`L ${round(p.x)} ${round(p.y)}`);
-  commands.push(`L 0 ${round(spanY)}`);
-
-  corner.length = 0;
-  appendSuperellipseCorner(corner, spanX, spanY, spanX, spanY, power, -1, -1, false);
-  for (const p of corner) commands.push(`L ${round(p.x)} ${round(p.y)}`);
-  commands.push("Z");
-
-  return commands.join(" ");
-}
 
 // Figma-style squircle, ported from WPF CreateSquircleGeometry.
 function squirclePath(width: number, height: number, cornerRadius: number, smoothingInput: number): string {
@@ -133,8 +72,6 @@ function squirclePath(width: number, height: number, cornerRadius: number, smoot
 export function islandPath(width: number, height: number, cornerRadius: number, smoothing = 0.6): string {
   const budget = Math.min(width, height) / 2;
   const radius = Math.min(Math.max(cornerRadius, 0), budget);
-  if (radius >= budget - 0.01 && Math.abs(width - height) > 0.5) {
-    return continuousCapsulePath(width, height, radius);
-  }
+  if (radius <= 0) return `M 0 0 H ${round(width)} V ${round(height)} H 0 Z`;
   return squirclePath(width, height, radius, smoothing);
 }

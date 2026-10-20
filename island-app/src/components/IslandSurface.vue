@@ -9,19 +9,16 @@ import { mediaAction, setBrightness, setIslandHitRegion, setSurfaceState, setVol
 const frame = reactive<IslandFrame>({
   width: METRICS.collapsedWidth,
   height: METRICS.collapsedHeight,
-  cornerRadius: METRICS.collapsedHeight / 2,
+  cornerRadius: METRICS.cornerRadius,
   collapsedOpacity: 1,
   contentOpacity: 0,
-  contentOffsetY: 0,
-  controlsOpacity: 0,
-  bottomOpacity: 0,
-  bottomOffsetY: 0,
 });
 
 const timeText = ref("--:--");
 let collapseTimer: number | undefined;
 let regionTimer: number | undefined;
 let modeToken = 0;
+let regionToken = 0;
 let animator: IslandAnimator | undefined;
 let activeRegion: { mode: IslandMode; hasMedia: boolean } = { mode: "collapsed", hasMedia: false };
 
@@ -42,29 +39,30 @@ function applyFrame(next: IslandFrame): void {
 async function applyRegion(mode: IslandMode, hasMedia: boolean): Promise<void> {
   activeRegion = { mode, hasMedia };
   const target = frameForMode(mode, hasMedia);
-  const margin = METRICS.regionMargin;
-  const x = (METRICS.windowWidth - target.width) / 2 + METRICS.opticalOffsetX - margin;
-  const y = METRICS.surfaceTop - margin;
+  const x = (METRICS.windowWidth - target.width) / 2 + METRICS.opticalOffsetX;
+  const y = METRICS.surfaceTop;
   try {
-    await setIslandHitRegion(
-      x,
-      y,
-      target.width + margin * 2,
-      target.height + margin * 2,
-      target.cornerRadius + margin,
-    );
+    await setIslandHitRegion(x, y, target.width, target.height);
   } catch {
     /* keep the previous region if the native update fails */
   }
 }
 
+function cancelRegionUpdate(): void {
+  window.clearTimeout(regionTimer);
+  regionToken += 1;
+}
+
 function scheduleRegion(mode: IslandMode, hasMedia: boolean, delay: number): void {
+  const token = ++regionToken;
   window.clearTimeout(regionTimer);
   if (delay <= 0) {
     void applyRegion(mode, hasMedia);
     return;
   }
-  regionTimer = window.setTimeout(() => void applyRegion(mode, hasMedia), delay);
+  regionTimer = window.setTimeout(() => {
+    if (token === regionToken) void applyRegion(mode, hasMedia);
+  }, delay);
 }
 
 function reapplyRegion(): void {
@@ -85,9 +83,8 @@ watch(
   async (mode) => {
     const token = ++modeToken;
     const hasMedia = state.media.hasMedia;
-    if (mode === "collapsed") {
-      window.clearTimeout(regionTimer);
-    } else {
+    cancelRegionUpdate();
+    if (mode !== "collapsed") {
       await applyRegion(mode, hasMedia);
       if (token !== modeToken || state.mode !== mode) return;
     }
@@ -104,12 +101,16 @@ watch(
 watch(
   () => state.media.hasMedia,
   (hasMedia, previous) => {
-    animator?.animateTo(state.mode, state.reduceMotion, hasMedia);
-    const settle = state.mode === "collapsed" ? METRICS.collapseDuration : METRICS.expandDuration;
-    const previousTarget = frameForMode(state.mode, previous);
-    const target = frameForMode(state.mode, hasMedia);
+    const refreshContent = state.mode === "expanded" && previous !== hasMedia;
+    animator?.animateTo(state.mode, state.reduceMotion, hasMedia, refreshContent);
+    if (state.mode === "collapsed") {
+      scheduleRegion("collapsed", hasMedia, METRICS.collapseDuration + 40);
+      return;
+    }
+    const previousTarget = frameForMode("expanded", previous);
+    const target = frameForMode("expanded", hasMedia);
     const grows = target.width * target.height > previousTarget.width * previousTarget.height;
-    scheduleRegion(state.mode, hasMedia, grows ? 0 : settle + 40);
+    scheduleRegion("expanded", hasMedia, grows ? 0 : METRICS.expandDuration + 40);
   },
 );
 
@@ -134,6 +135,9 @@ const surfaceStyle = computed(() => ({
   width: `${frame.width}px`,
   height: `${frame.height}px`,
   transform: surfaceTransform,
+}));
+const surfaceClipStyle = computed(() => ({
+  borderRadius: `${METRICS.cornerRadius}px`,
 }));
 const collapsedStyle = computed(() => ({
   opacity: frame.collapsedOpacity,
@@ -203,20 +207,21 @@ function formatSeconds(value: number): string {
         <path class="shell-rim" :d="path" />
       </svg>
 
-      <div class="collapsed-view" :style="collapsedStyle" aria-hidden="true">
-        <div v-if="state.media.hasMedia" class="collapsed-art">
-          <img v-if="state.media.artDataUri" :src="state.media.artDataUri" alt="" class="art-image" />
-          <span v-else class="art-fallback">♪</span>
+      <div class="surface-content" :style="surfaceClipStyle">
+        <div class="collapsed-view" :style="collapsedStyle" aria-hidden="true">
+          <div v-if="state.media.hasMedia" class="collapsed-art">
+            <img v-if="state.media.artDataUri" :src="state.media.artDataUri" alt="" class="art-image" />
+            <span v-else class="art-fallback">♪</span>
+          </div>
+          <div class="collapsed-time">{{ timeText }}</div>
         </div>
-        <div class="collapsed-time">{{ timeText }}</div>
-      </div>
 
       <div
         class="expanded-view"
         :class="{ compact: !state.media.hasMedia }"
         :style="expandedStyle"
       >
-        <div class="media-section">
+        <div v-if="state.media.hasMedia" class="media-section">
           <div class="top-row">
             <div class="album-art">
               <img v-if="state.media.artDataUri" :src="state.media.artDataUri" alt="" class="art-image" />
@@ -235,16 +240,16 @@ function formatSeconds(value: number): string {
             <button class="pin-button" :title="state.pinned ? '取消保持展开' : '保持展开'" :style="{ color: state.pinned ? 'var(--island-accent)' : 'rgba(255, 255, 255, 0.7)' }" @click="togglePinned">&#xE718;</button>
           </div>
 
-          <div class="playback-row" :style="{ opacity: frame.controlsOpacity }">
+          <div class="playback-row">
             <button class="icon-button" title="上一首" @click="onMediaAction('previous')">⏮</button>
             <button class="play-button" title="播放 / 暂停" @click="onMediaAction('toggle')">{{ state.media.playing ? "⏸" : "▶" }}</button>
             <button class="icon-button" title="下一首" @click="onMediaAction('next')">⏭</button>
           </div>
 
-          <div class="bottom-divider" :style="{ opacity: frame.bottomOpacity }"></div>
+          <div class="bottom-divider"></div>
         </div>
 
-        <div class="bottom-section" :style="{ opacity: frame.bottomOpacity, transform: `translateY(${frame.bottomOffsetY}px)` }">
+        <div class="bottom-section">
           <div class="chips">
             <div class="chip">
               <span class="chip-label">CPU</span>
@@ -292,6 +297,7 @@ function formatSeconds(value: number): string {
             </label>
           </div>
         </div>
+      </div>
       </div>
     </div>
 

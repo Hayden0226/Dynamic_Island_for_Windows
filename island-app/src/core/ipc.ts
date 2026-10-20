@@ -28,7 +28,7 @@ function mockSystem(): SystemSnapshot {
 }
 
 function mockMedia(): MediaSnapshot {
-  return { playing: false, title: "未在播放", artist: "打开任意音乐应用", positionSeconds: 0, durationSeconds: 0, artDataUri: null, hasMedia: false };
+  return { playing: false, title: "", artist: "", positionSeconds: 0, durationSeconds: 0, artDataUri: null, hasMedia: false };
 }
 
 export async function getSystemSnapshot(): Promise<SystemSnapshot> {
@@ -71,8 +71,7 @@ export async function setIslandHitRegion(
   y: number,
   width: number,
   height: number,
-  radius: number,
 ): Promise<void> {
   if (!isTauri()) return;
-  await invoke("set_island_hit_region", { x, y, width, height, radius });
+  await invoke("set_island_hit_region", { x, y, width, height });
 }

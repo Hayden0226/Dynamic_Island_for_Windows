@@ -28,7 +28,7 @@ use windows::{
     Storage::Streams::DataReader,
     Win32::{
         Foundation::{FILETIME, HMODULE, HWND, TRUE},
-        Graphics::Gdi::{CreateRoundRectRgn, DeleteObject, SetWindowRgn},
+        Graphics::Gdi::{CreateRectRgn, DeleteObject, SetWindowRgn},
         Media::Audio::{eConsole, eRender, IMMDeviceEnumerator, MMDeviceEnumerator},
         Media::Audio::Endpoints::IAudioEndpointVolume,
         System::{
@@ -189,12 +189,10 @@ fn set_brightness(percent: f64) -> Result<(), String> {
     set_brightness_percent(percent).map_err(|error| error.to_string())
 }
 
-fn island_region_bounds(width: f64, height: f64, radius: f64) -> (f64, f64, f64, f64, f64) {
-    let x = (WINDOW_LOGICAL_WIDTH - width) / 2.0 + OPTICAL_OFFSET_X - REGION_MARGIN;
-    let y = SURFACE_TOP - REGION_MARGIN;
-    let region_width = width + REGION_MARGIN * 2.0;
-    let region_height = height + REGION_MARGIN * 2.0;
-    (x, y, region_width, region_height, radius + REGION_MARGIN)
+fn island_region_bounds(width: f64, height: f64) -> (f64, f64, f64, f64) {
+    let x = (WINDOW_LOGICAL_WIDTH - width) / 2.0 + OPTICAL_OFFSET_X;
+    let y = SURFACE_TOP;
+    (x, y, width, height)
 }
 
 fn apply_island_hit_region<R: tauri::Runtime>(
@@ -203,19 +201,16 @@ fn apply_island_hit_region<R: tauri::Runtime>(
     y: f64,
     width: f64,
     height: f64,
-    radius: f64,
 ) -> Result<(), String> {
     let scale = window.scale_factor().map_err(|error| error.to_string())?;
-    let left = (x * scale).round() as i32;
-    let top = (y * scale).round() as i32;
-    let right = left + ((width * scale).round() as i32).max(1);
-    let bottom = top + ((height * scale).round() as i32).max(1);
-    let corner = ((radius * 2.0 * scale).round() as i32)
-        .clamp(0, (right - left).min(bottom - top));
+    let left = ((x - REGION_MARGIN) * scale).round() as i32;
+    let top = ((y - REGION_MARGIN) * scale).round() as i32;
+    let right = ((x + width + REGION_MARGIN) * scale).round() as i32;
+    let bottom = ((y + height + REGION_MARGIN) * scale).round() as i32;
     let hwnd = window.hwnd().map_err(|error| error.to_string())?;
 
     unsafe {
-        let region = CreateRoundRectRgn(left, top, right, bottom, corner, corner);
+        let region = CreateRectRgn(left, top, right.max(left + 1), bottom.max(top + 1));
         if region.is_invalid() {
             return Err("无法创建灵动岛窗口区域".into());
         }
@@ -234,12 +229,11 @@ fn set_island_hit_region(
     y: f64,
     width: f64,
     height: f64,
-    radius: f64,
 ) -> Result<(), String> {
     let Some(window) = app.get_webview_window("main") else {
         return Ok(());
     };
-    apply_island_hit_region(&window, x, y, width, height, radius)
+    apply_island_hit_region(&window, x, y, width, height)
 }
 
 #[tauri::command]
@@ -395,15 +389,13 @@ fn position_main_window(app: &tauri::App) -> tauri::Result<()> {
         let _ = window.set_position(tauri::PhysicalPosition::new(x, y));
     }
 
-    let (region_x, region_y, region_width, region_height, region_radius) =
-        island_region_bounds(176.0, 48.0, 24.0);
+    let (region_x, region_y, region_width, region_height) = island_region_bounds(176.0, 48.0);
     let _ = apply_island_hit_region(
         &window,
         region_x,
         region_y,
         region_width,
         region_height,
-        region_radius,
     );
     let _ = window.show();
     Ok(())
